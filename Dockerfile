@@ -11,5 +11,4 @@ COPY --from=builder /app/uptime-monitor /app/uptime-monitor
 COPY --from=builder /app/static /app/static
 COPY --from=builder /app/uptime.db /app/uptime.db
 EXPOSE 8080
-ENV GIN_MODE=release
 CMD ["/app/uptime-monitor"]

@@ -23,6 +23,13 @@ go run .
 ```
 Visit [http://localhost:8080](http://localhost:8080) in your browser.
 
+### Podman
+Build and run the app in a production container:
+```sh
+podman build -t uptime-monitor .
+podman run -p 8080:8080 uptime-monitor
+```
+
 ### Docker
 Build and run the app in a production container:
 ```sh
