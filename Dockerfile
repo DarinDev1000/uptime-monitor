@@ -1,11 +1,12 @@
 # Build stage
-FROM golang:1.20-alpine AS builder
+FROM golang:1.24-bookworm AS builder
 WORKDIR /app
 COPY . .
+ENV CGO_ENABLED=1
 RUN go build -ldflags="-s -w" -o uptime-monitor main.go
 
 # Production stage
-FROM alpine:3.19
+FROM debian:bookworm-slim
 WORKDIR /app
 COPY --from=builder /app/uptime-monitor /app/uptime-monitor
 COPY --from=builder /app/static /app/static
