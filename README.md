@@ -26,15 +26,17 @@ Visit [http://localhost:8080](http://localhost:8080) in your browser.
 ### Podman
 Build and run the app in a production container:
 ```sh
+podman volume create uptime-data
 podman build -t uptime-monitor .
-podman run -p 8080:8080 uptime-monitor
+podman run -p 8080:8080 -v uptime-data:/app/data uptime-monitor
 ```
 
 ### Docker
 Build and run the app in a production container:
 ```sh
+docker volume create uptime-data
 docker build -t uptime-monitor .
-docker run -p 8080:8080 uptime-monitor
+docker run -p 8080:8080 -v uptime-data:/app/data uptime-monitor
 ```
 
 ## Usage
