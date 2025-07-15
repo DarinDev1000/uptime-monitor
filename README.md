@@ -31,6 +31,12 @@ podman build -t uptime-monitor .
 podman run -p 8080:8080 -v uptime-data:/app/data uptime-monitor
 ```
 
+```sh
+podman build -t ghcr.io/darindev1000/uptime-monitor:latest .
+podman images
+podman push ghcr.io/darindev1000/uptime-monitor:latest
+```
+
 ### Docker
 Build and run the app in a production container:
 ```sh
