@@ -1,0 +1,46 @@
+body {
+  background: #111827;
+  color: #f3f4f6;
+}
+.card {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.2);
+  padding: 1.5rem;
+  transition: transform 0.2s;
+}
+.card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
+}
+input, select {
+  background: #374151;
+  border: 1px solid #4b5563;
+  color: #f3f4f6;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+input::placeholder {
+  color: #9ca3af;
+}
+button {
+  background: #2563eb;
+  color: #fff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  box-shadow: 0 2px 8px 0 rgba(37,99,235,0.1);
+  transition: background 0.2s;
+}
+button:hover {
+  background: #1d4ed8;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
