@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -16,7 +18,7 @@ import (
 type Service struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
-	Type string `json:"type"` // "http" or "tcp"
+	Type string `json:"type"` // "http", "tcp", or "ping"
 	URL  string `json:"url"`
 }
 
@@ -114,6 +116,23 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
 		return
 	}
+	if r.Method == http.MethodDelete {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			w.WriteHeader(400)
+			w.Write([]byte("Missing id"))
+			return
+		}
+		// Remove uptime logs for this service first (optional, for DB integrity)
+		db.Exec("DELETE FROM uptime_logs WHERE service_id = ?", id)
+		_, err := db.Exec("DELETE FROM services WHERE id = ?", id)
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		w.WriteHeader(204)
+		return
+	}
 }
 
 func handleUptime(w http.ResponseWriter, r *http.Request) {
@@ -168,8 +187,26 @@ func checkService(s Service) {
 			up = true
 			conn.Close()
 		}
+	} else if s.Type == "ping" {
+		up = pingHost(s.URL)
 	}
 	db.Exec("INSERT INTO uptime_logs (service_id, up, checked_at) VALUES (?, ?, ?)", s.ID, boolToInt(up), time.Now().Format(time.RFC3339))
+}
+
+// pingHost sends a single ICMP echo request to the host and returns true if it receives a reply.
+func pingHost(host string) bool {
+	// Use exec to call system ping for cross-platform support (1 echo, 2s timeout)
+	// On Windows: ping -n 1 -w 2000 host
+	// On Unix: ping -c 1 -W 2 host
+	var cmd *exec.Cmd
+	// timeout := 2 * time.Second // not used
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("ping", "-n", "1", "-w", "2000", host)
+	} else {
+		cmd = exec.Command("ping", "-c", "1", "-W", "2", host)
+	}
+	err := cmd.Run()
+	return err == nil
 }
 
 func boolToInt(b bool) int {
