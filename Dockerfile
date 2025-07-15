@@ -11,7 +11,7 @@ WORKDIR /app
 RUN mkdir -p /app/data
 COPY --from=builder /app/uptime-monitor /app/uptime-monitor
 COPY --from=builder /app/static /app/static
-COPY --from=builder /app/data/uptime.db /app/data/uptime.db
+# COPY --from=builder /app/data/uptime.db /app/data/uptime.db
 EXPOSE 8080
 VOLUME ["/app/data"]
 ENV SQLITE_DB=/app/data/uptime.db
