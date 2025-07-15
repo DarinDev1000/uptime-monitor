@@ -27,9 +27,15 @@
         <button class="ml-0 md:ml-2 card bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-white font-bold shadow-lg" type="submit">Add</button>
       </form>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      <template x-for="service in services" :key="service.id">
-        <div class="card relative overflow-hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+         @dragover.prevent
+         @drop="if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) { moveService(dragIndex, dragOverIndex); dragIndex = dragOverIndex = null }">
+      <template x-for="(service, idx) in services" :key="service.id">
+        <div class="card relative overflow-hidden"
+             draggable="true"
+             @dragstart="dragIndex = idx"
+             @dragenter.prevent="dragOverIndex = idx"
+             :class="{'ring-2 ring-blue-400': dragOverIndex === idx}">
           <div class="flex justify-between items-center mb-3">
             <div>
               <span class="font-semibold text-lg" x-text="service.name"></span>
@@ -49,6 +55,21 @@
     function uptimeMonitor() {
       return {
         services: [],
+        dragIndex: null,
+        dragOverIndex: null,
+        moveService(from, to) {
+          if (from === to) return;
+          const arr = [...this.services];
+          const [moved] = arr.splice(from, 1);
+          arr.splice(to, 0, moved);
+          this.services = arr;
+          // Persist new order to backend
+          fetch('/api/services', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.services.map(s => s.id))
+          });
+        },
         newService: { name: '', type: 'http', url: '' },
         charts: {},
         fetchServices() {

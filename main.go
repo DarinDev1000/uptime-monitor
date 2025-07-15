@@ -55,21 +55,24 @@ func main() {
 
 func initDB() {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS services (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT,
-		type TEXT,
-		url TEXT
-	);`)
+			   id INTEGER PRIMARY KEY AUTOINCREMENT,
+			   name TEXT,
+			   type TEXT,
+			   url TEXT,
+			   position INTEGER DEFAULT 0
+	   );`)
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Add position column if it doesn't exist (for migrations)
+	db.Exec(`ALTER TABLE services ADD COLUMN position INTEGER DEFAULT 0`)
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS uptime_logs (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		service_id INTEGER,
-		up INTEGER,
-		checked_at DATETIME,
-		FOREIGN KEY(service_id) REFERENCES services(id)
-	);`)
+			   id INTEGER PRIMARY KEY AUTOINCREMENT,
+			   service_id INTEGER,
+			   up INTEGER,
+			   checked_at DATETIME,
+			   FOREIGN KEY(service_id) REFERENCES services(id)
+	   );`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,7 +93,7 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 
 func handleServices(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		rows, err := db.Query("SELECT id, name, type, url FROM services")
+		rows, err := db.Query("SELECT id, name, type, url FROM services ORDER BY position ASC, id ASC")
 		if err != nil {
 			w.WriteHeader(500)
 			return
@@ -108,12 +111,29 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var s Service
 		json.NewDecoder(r.Body).Decode(&s)
-		_, err := db.Exec("INSERT INTO services (name, type, url) VALUES (?, ?, ?)", s.Name, s.Type, s.URL)
+		// Set position to max+1
+		var maxPos int
+		db.QueryRow("SELECT COALESCE(MAX(position), 0) FROM services").Scan(&maxPos)
+		_, err := db.Exec("INSERT INTO services (name, type, url, position) VALUES (?, ?, ?, ?)", s.Name, s.Type, s.URL, maxPos+1)
 		if err != nil {
 			w.WriteHeader(500)
 			return
 		}
 		w.WriteHeader(201)
+		return
+	}
+	if r.Method == http.MethodPut {
+		// Update order: expects JSON array of service IDs in new order
+		var ids []int
+		if err := json.NewDecoder(r.Body).Decode(&ids); err != nil {
+			w.WriteHeader(400)
+			w.Write([]byte("Invalid body"))
+			return
+		}
+		for pos, id := range ids {
+			db.Exec("UPDATE services SET position = ? WHERE id = ?", pos, id)
+		}
+		w.WriteHeader(204)
 		return
 	}
 	if r.Method == http.MethodDelete {
