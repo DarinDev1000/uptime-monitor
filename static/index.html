@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uptime Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="container mx-auto py-8" x-data="uptimeMonitor()">
+    <h1 class="text-3xl font-bold mb-6">Uptime Monitor</h1>
+    <div class="mb-6">
+      <form @submit.prevent="addService">
+        <div class="flex space-x-2">
+          <input x-model="newService.name" class="border px-2 py-1" placeholder="Service Name" required>
+          <select x-model="newService.type" class="border px-2 py-1" required>
+            <option value="http">HTTP</option>
+            <option value="tcp">TCP</option>
+          </select>
+          <input x-model="newService.url" class="border px-2 py-1" placeholder="URL or host:port" required>
+          <button class="bg-blue-500 text-white px-4 py-1 rounded" type="submit">Add</button>
+        </div>
+      </form>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <template x-for="service in services" :key="service.id">
+        <div class="bg-white p-4 rounded shadow">
+          <div class="flex justify-between items-center mb-2">
+            <div>
+              <span class="font-semibold" x-text="service.name"></span>
+              <span class="text-xs text-gray-500 ml-2" x-text="service.type.toUpperCase()"></span>
+            </div>
+            <span class="text-xs text-gray-400" x-text="service.url"></span>
+          </div>
+          <canvas :id="'chart-' + service.id" height="80"></canvas>
+        </div>
+      </template>
+    </div>
+  </div>
+  <script>
+    function uptimeMonitor() {
+      return {
+        services: [],
+        newService: { name: '', type: 'http', url: '' },
+        charts: {},
+        fetchServices() {
+          fetch('/api/services').then(r => r.json()).then(data => {
+            this.services = data;
+            this.$nextTick(() => {
+              this.services.forEach(s => this.fetchUptime(s));
+            });
+          });
+        },
+        addService() {
+          fetch('/api/services', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.newService)
+          }).then(() => {
+            this.newService = { name: '', type: 'http', url: '' };
+            this.fetchServices();
+          });
+        },
+        fetchUptime(service) {
+          fetch(`/api/uptime?service_id=${service.id}`).then(r => r.json()).then(logs => {
+            const ctx = document.getElementById('chart-' + service.id).getContext('2d');
+            const data = logs.reverse();
+            const labels = data.map(l => new Date(l.checked_at).toLocaleTimeString());
+            const values = data.map(l => l.up ? 1 : 0);
+            if (this.charts[service.id]) {
+              this.charts[service.id].data.labels = labels;
+              this.charts[service.id].data.datasets[0].data = values;
+              this.charts[service.id].update();
+            } else {
+              this.charts[service.id] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: 'Uptime',
+                    data: values,
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    fill: true,
+                    stepped: true,
+                  }]
+                },
+                options: {
+                  scales: {
+                    y: {
+                      min: 0,
+                      max: 1,
+                      ticks: {
+                        callback: v => v ? 'Up' : 'Down'
+                      }
+                    }
+                  }
+                }
+              });
+            }
+          });
+        },
+        init() {
+          this.fetchServices();
+          setInterval(() => {
+            this.services.forEach(s => this.fetchUptime(s));
+          }, 60000);
+        }
+      }
+    }
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('uptimeMonitor', uptimeMonitor);
+    });
+  </script>
+</body>
+</html>
